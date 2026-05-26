@@ -1,0 +1,232 @@
+Elaborado por: Gabriel Gómez Fallas y Saul Dorado Ureña
+#Fecha de creación 19/05/2026
+#Versión 3.10.12
+#ultima versión 10:24 del 25 de mayo del 2026
+#Aporte de Gabriel Gómez Fallas 
+#Elaborado por: Gabriel Gómez Fallas y Saul Dorado Ureña
+#Fecha de creación 19/05/2026
+#Versión 3.10.12
+#Última versión: 25 Mayo 2026
+import re
+import os
+import tkinter as tk
+from tkinter import messagebox
+
+# Estructura global en Matriz (RAM)
+baseDonantes = []
+archivoPersistente = "donantes_incompleto.txt"
+
+# Catálogo de provincias según el primer dígito de la cédula
+provinciasCatalogo = {
+    "1": "San José", "2": "Alajuela", "3": "Cartago", "4": "Heredia",
+    "5": "Guanacaste", "6": "Puntarenas", "7": "Limón", "8": "Naturalizado"
+}
+
+def auxValidarCedula(cedula: str) -> bool:
+    """Función de Validación: Comprueba el formato #-####-#### sin ceros al inicio."""
+    if not isinstance(cedula, str): 
+        return False
+    patron = r"^[1-9]-\d{4}-\d{4}$"
+    return bool(re.match(patron, cedula))
+
+def registrarCedulaLogica(cedula: str) -> str:
+    """Función Principal: Determina la provincia según el primer dígito."""
+    provinciaId = cedula[0]
+    return provinciasCatalogo.get(provinciaId, "Desconocida")
+
+def llamarRegistrarCedulaLogica(entradaCedulaWidget) -> tuple:
+    """Función de Llamada: Gestiona la desacoplación con la interfaz."""
+    cedulaTexto = entradaCedulaWidget.get() if hasattr(entradaCedulaWidget, 'get') else entradaCedulaWidget
+    if auxValidarCedula(cedulaTexto):
+        provincia = registrarCedulaLogica(cedulaTexto)
+        return True, provincia
+    else:
+        return False, "Formato de cédula inválido. Debe ser #-####-#### (Sin iniciar en 0)."
+
+
+#########################################################################
+# ===================================================================== #
+#                 BLOQUE 2: PERSISTENCIA Y CAMPOS VACÍOS                #
+# ===================================================================== #
+#########################################################################
+
+def auxVerificarCamposVacios(datos: dict) -> bool:
+    """Valida que ninguna de las entradas del formulario esté en blanco."""
+    for valor in datos.values():
+        if str(valor).strip() == "":
+            return False
+    return True
+
+def guardarMatrizAArchivo() -> bool:
+    """Almacena secuencialmente la matriz RAM en el archivo de texto separado por ';'."""
+    try:
+        with open(archivoPersistente, "w", encoding="utf-8") as f:
+            for donante in baseDonantes:
+                linea = ";".join(str(campo) for campo in donante)
+                f.write(linea + "\n")
+        return True
+    except Exception as e:
+        print(f"Error crítico al persistir información: {e}")
+        return False
+
+
+#########################################################################
+# ===================================================================== #
+#             BLOQUE 3: INTERFAZ GRÁFICA INCOMPLETA (HASTA SEXO)        #
+# ===================================================================== #
+#########################################################################
+#Programación orientada a objetos
+class AppDonacionesIncompleta:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("TEC - Registro Incompleto de Donadores")
+        self.root.geometry("850x450")  # Ventana más compacta al tener menos campos
+        self.root.resizable(False, False)
+        
+        # Paleta de Colores Solicitada (Azul, Blanco, Celeste)
+        self.cBg = "#f4f7f6"           # Fondo principal claro (Blanco suave)
+        self.cPanel = "#ffffff"        # Tarjetas internas en Blanco Puro
+        self.cBrand = "#0f4c81"        # Azul Clásico Institucional
+        self.cCeleste = "#aed9e0"      # Celeste suave para destaques y bordes
+        self.cCelesteOsc = "#5e9ca7"   # Celeste oscuro para texto secundario legible
+        self.cTextDark = "#1c2541"     # Texto principal oscuro
+        self.cEntryBg = "#f8f9fa"      # Fondo grisáceo muy claro para inputs
+        
+        self.root.configure(bg=self.cBg)
+        self.crearComponentes()
+        
+    def crearComponentes(self):
+        # -----------------------------------------------------------------
+        # PANEL IZQUIERDO: Branding Institucional (Azul Real)
+        # -----------------------------------------------------------------
+        panelIzq = tk.Frame(self.root, bg=self.cBrand, width=280, height=450)
+        panelIzq.pack(side=tk.LEFT, fill=tk.Y)
+        panelIzq.pack_propagate(False)
+        
+        lblTituloInst = tk.Label(panelIzq, text="TEC", font=("Helvetica", 28, "bold"), bg=self.cBrand, fg="#ffffff")
+        lblTituloInst.pack(pady=(40, 5))
+        
+        lblSubInst = tk.Label(panelIzq, text="Tecnológico\nde Costa Rica", font=("Helvetica", 12), bg=self.cBrand, fg=self.cCeleste)
+        lblSubInst.pack(pady=5)
+        
+        canvasLinea = tk.Canvas(panelIzq, width=180, height=2, bg="#ffffff", highlightthickness=0)
+        canvasLinea.pack(pady=20)
+        
+        infoProyecto = (
+            "SISTEMA DE REGISTRO\n"
+            "DE DONADORES\n\n"
+            "Formulario \n"
+            "Taller de Programación\n\n"
+            "Desarrollado por:\n"
+            "• Gabriel Gómez F.\n"
+            "• Saul Dorado U."
+        )
+        lblInfo = tk.Label(panelIzq, text=infoProyecto, font=("Helvetica", 11), bg=self.cBrand, fg="#ffffff", justify=tk.CENTER)
+        lblInfo.pack(pady=10)
+
+        # -----------------------------------------------------------------
+        # PANEL DERECHO: Formulario Reducido (Nombre, Cédula, Sexo)
+        # -----------------------------------------------------------------
+        panelDer = tk.Frame(self.root, bg=self.cBg, width=570, height=450)
+        panelDer.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        panelDer.pack_propagate(False)
+        
+        lblFormTitle = tk.Label(panelDer, text="Formulario Parcial de Inscripción", font=("Helvetica", 18, "bold"), bg=self.cBg, fg=self.cTextDark)
+        lblFormTitle.pack(anchor=tk.W, padx=40, pady=(30, 15))
+        
+        # Tarjeta interna contenedora
+        self.card = tk.Frame(panelDer, bg=self.cPanel, padx=25, pady=25, bd=1, relief=tk.SOLID, highlightbackground=self.cCeleste, highlightcolor=self.cBrand)
+        self.card.pack(fill=tk.BOTH, expand=True, padx=40, pady=(0, 30))
+        
+        # Grid del Formulario Modificado
+        # Fila 0: Nombre Completo
+        self.crearLabel("Nombre Completo:", 0, 0)
+        self.txtNombre = self.crearEntry(0, 1)
+        
+        # Fila 1: Cédula
+        self.crearLabel("Cédula (#-####-####):", 1, 0)
+        self.txtCedula = self.crearEntry(1, 1)
+        
+        # Fila 2: Sexo / Género (Límite solicitado)
+        self.crearLabel("Sexo / Género:", 2, 0)
+        self.valSexo = tk.StringVar(value="Masculino")
+        frameRadio = tk.Frame(self.card, bg=self.cPanel)
+        frameRadio.grid(row=2, column=1, sticky=tk.W, pady=8)
+        
+        rbM = tk.Radiobutton(frameRadio, text="Masculino", variable=self.valSexo, value="Masculino", bg=self.cPanel, fg=self.cTextDark, selectcolor="#ffffff", activebackground=self.cPanel, activeforeground=self.cTextDark)
+        rbF = tk.Radiobutton(frameRadio, text="Femenino", variable=self.valSexo, value="Femenino", bg=self.cPanel, fg=self.cTextDark, selectcolor="#ffffff", activebackground=self.cPanel, activeforeground=self.cTextDark)
+        rbM.pack(side=tk.LEFT, padx=(0, 20))
+        rbF.pack(side=tk.LEFT)
+        
+        # Sección de botones de control
+        frameBotones = tk.Frame(self.card, bg=self.cPanel)
+        frameBotones.grid(row=3, column=0, columnspan=2, pady=(40, 0), sticky=tk.EW)
+        
+        btnGuardar = tk.Button(frameBotones, text="REGISTRAR PARCIAL", command=self.procesarFormulario, bg=self.cBrand, fg="#ffffff", font=("Helvetica", 11, "bold"), bd=0, height=2, cursor="hand2", activebackground="#0a3356", activeforeground="#ffffff")
+        btnGuardar.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(10, 0))
+        
+        btnLimpiar = tk.Button(frameBotones, text="Limpiar Campos", command=self.limpiarCampos, bg=self.cCeleste, fg=self.cTextDark, font=("Helvetica", 10, "bold"), bd=0, height=2, cursor="hand2", activebackground=self.cCelesteOsc, activeforeground="#ffffff")
+        btnLimpiar.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+
+    def crearLabel(self, texto, fila, columna):
+        lbl = tk.Label(self.card, text=texto, font=("Helvetica", 10, "bold"), bg=self.cPanel, fg=self.cTextDark)
+        lbl.grid(row=fila, column=columna, sticky=tk.W, pady=12, padx=(0, 15))
+        return lbl
+        
+    def crearEntry(self, fila, columna):
+        entry = tk.Entry(self.card, font=("Helvetica", 11), bg=self.cEntryBg, fg=self.cTextDark, bd=0, insertbackground=self.cTextDark, highlightthickness=1, highlightbackground="#d1d7e0", highlightcolor=self.cBrand)
+        entry.grid(row=fila, column=columna, sticky=tk.EW, pady=12, ipady=4)
+        self.card.grid_columnconfigure(columna, weight=1)
+        return entry
+
+    def limpiarCampos(self):
+        """Limpia las entradas actuales de la interfaz gráfica."""
+        self.txtNombre.delete(0, tk.END)
+        self.txtCedula.delete(0, tk.END)
+        self.valSexo.set("Masculino")
+
+    def procesarFormulario(self):
+        """Orquesta las validaciones de los campos existentes y guarda los datos."""
+        datosFormulario = {
+            "nombre": self.txtNombre.get().strip(),
+            "cedula": self.txtCedula.get().strip()
+        }
+
+        if not auxVerificarCamposVacios(datosFormulario):
+            messagebox.showerror("Campos Incompletos", "Por favor rellene todos los campos obligatorios del formulario.")
+            return
+
+        # Validación de Cédula (Capa Llamada)
+        valCed, resCed = llamarRegistrarCedulaLogica(self.txtCedula)
+        if not valCed:
+            messagebox.showerror("Validación Fallida", resCed)
+            return
+
+        # Sincronización de variables físicas
+        sexoBool = True if self.valSexo.get() == "Masculino" else False
+        
+        # Inserción parcial estructurada en Matriz RAM
+        nuevaFilaDonante = [
+            datosFormulario["nombre"],
+            datosFormulario["cedula"],
+            sexoBool
+        ]
+        
+        baseDonantes.append(nuevaFilaDonante)
+        guardarMatrizAArchivo()
+
+        # Despliegue de confirmación con los datos validados hasta el momento
+        msgExito = (
+            f"¡Registro Parcial Completado!\n\n"
+            f"• Nombre: {datosFormulario['nombre']}\n"
+            f"• Cédula: {datosFormulario['cedula']}\n"
+            f"• Provincia: {resCed}\n"
+            f"• Sexo (Masculino): {sexoBool}\n\n"
+            f"Datos salvados de forma persistente."
+        )
+        messagebox.showinfo("Inserción Exitosa", msgExito)
+        self.limpiarCampos()
+if __name__ == "__main__":
+    rootWindow = tk.Tk()
+    app = AppDonacionesIncompleta(rootWindow)
+    rootWindow.mainloop()
